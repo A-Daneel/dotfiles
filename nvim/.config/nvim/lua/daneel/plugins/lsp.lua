@@ -16,8 +16,10 @@ return {
         { "j-hui/fidget.nvim", opts = {} },
       },
       config = function()
-        -- This is where all the LSP shenanigans will live
-        local lspconfig = require("lspconfig")
+        -- `mason-lspconfig` (v2+) no longer exposes `setup_handlers`. On
+        -- Neovim 0.11+ servers are configured with the built-in
+        -- `vim.lsp.config` API and enabled automatically by
+        -- `mason-lspconfig` (`automatic_enable`, on by default).
         local lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
         require("mason").setup()
         require("mason-lspconfig").setup({
@@ -29,15 +31,13 @@ return {
             "rust_analyzer",
           },
         })
-        require("mason-lspconfig").setup_handlers({
-          function(server_name)
-            lspconfig[server_name].setup({
-              capabilities = lsp_capabilities,
-            })
-          end,
-        })
-        lspconfig.ltex.setup({
+
+        -- Shared config merged into every server (see `:h lsp-config`).
+        vim.lsp.config("*", {
           capabilities = lsp_capabilities,
+        })
+
+        vim.lsp.config("ltex", {
           on_attach = function()
             require("ltex_extra").setup({
               load_langs = { "nl", "en-US" },
