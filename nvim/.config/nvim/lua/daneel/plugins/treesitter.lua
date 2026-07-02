@@ -40,6 +40,45 @@ return {
         require("nvim-treesitter").install(ensure_installed)
       end
 
+      local function manual_install_warning(level)
+        vim.notify(
+          "nvim-treesitter (main) requires the `tree-sitter` CLI to compile parsers. "
+            .. "Install it (e.g. `:MasonInstall tree-sitter-cli`, `cargo install tree-sitter-cli`, "
+            .. "or your package manager) and run `:TSUpdate`.",
+          level or vim.log.levels.WARN
+        )
+      end
+
+      -- Look up and, if needed, install the mason `tree-sitter-cli` package,
+      -- then compile the parsers. Assumes the mason registry has been refreshed
+      -- so that `get_package` can resolve the package.
+      local function provision_from_registry(registry)
+        local pkg_ok, pkg = pcall(registry.get_package, "tree-sitter-cli")
+        if not pkg_ok or not pkg then
+          manual_install_warning()
+          return
+        end
+
+        if pkg:is_installed() then
+          install_parsers()
+          return
+        end
+
+        vim.notify(
+          "nvim-treesitter (main): installing the `tree-sitter` CLI via mason to compile parsers…",
+          vim.log.levels.INFO
+        )
+        pkg:install(nil, function(success)
+          vim.schedule(function()
+            if success then
+              install_parsers()
+            else
+              manual_install_warning(vim.log.levels.ERROR)
+            end
+          end)
+        end)
+      end
+
       -- The `main` branch compiles parsers with the external `tree-sitter` CLI.
       -- If it is missing, self-provision it via mason (which is already used
       -- for LSP tooling); fall back to a helpful message otherwise.
@@ -47,39 +86,16 @@ return {
         install_parsers()
       else
         local ok, registry = pcall(require, "mason-registry")
-        local pkg
-        if ok then
-          local pkg_ok, result = pcall(registry.get_package, "tree-sitter-cli")
-          pkg = pkg_ok and result or nil
-        end
-
-        if pkg and pkg:is_installed() then
-          install_parsers()
-        elseif pkg then
-          vim.notify(
-            "nvim-treesitter (main): installing the `tree-sitter` CLI via mason to compile parsers…",
-            vim.log.levels.INFO
-          )
-          pkg:install(nil, function(success)
-            if success then
-              vim.schedule(install_parsers)
-            else
-              vim.schedule(function()
-                vim.notify(
-                  "Failed to install the `tree-sitter` CLI via mason. Install it manually "
-                    .. "(e.g. `cargo install tree-sitter-cli` or your package manager) and run `:TSUpdate`.",
-                  vim.log.levels.ERROR
-                )
-              end)
-            end
-          end)
+        if not ok then
+          manual_install_warning()
         else
-          vim.notify(
-            "nvim-treesitter (main) requires the `tree-sitter` CLI to compile parsers. "
-              .. "Install it (e.g. `:MasonInstall tree-sitter-cli`, `cargo install tree-sitter-cli`, "
-              .. "or your package manager) and run `:TSUpdate`.",
-            vim.log.levels.WARN
-          )
+          -- On a fresh install the mason registry has not been downloaded yet,
+          -- so `get_package` would fail. Refresh it first, then provision.
+          registry.refresh(function()
+            vim.schedule(function()
+              provision_from_registry(registry)
+            end)
+          end)
         end
       end
 
