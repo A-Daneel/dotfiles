@@ -1,5 +1,5 @@
-vim.opt.spell = true
-vim.opt.spelllang = "nl"
+vim.opt_local.spell = true
+vim.opt_local.spelllang = "nl"
 
 vim.bo.shiftwidth = 2
 vim.bo.softtabstop = 2

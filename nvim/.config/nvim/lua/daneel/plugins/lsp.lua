@@ -7,8 +7,8 @@ return {
       cmd = "LspInfo",
       event = { "BufReadPre", "BufNewFile" },
       dependencies = {
-        "williamboman/mason.nvim",
-        "williamboman/mason-lspconfig.nvim",
+        "mason-org/mason.nvim",
+        "mason-org/mason-lspconfig.nvim",
         "hrsh7th/cmp-nvim-lsp",
         -- special ltex shizzle
         { "barreiroleo/ltex_extra.nvim", ft = "tex" },

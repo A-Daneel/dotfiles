@@ -13,7 +13,7 @@ return {
     build = ":TSUpdate",
     -- mason provides the `tree-sitter` CLI that the `main` branch uses to
     -- compile parsers, and prepends its `bin/` directory to Neovim's PATH.
-    dependencies = { "williamboman/mason.nvim" },
+    dependencies = { "mason-org/mason.nvim" },
     config = function()
       local ensure_installed = {
         "lua",
@@ -27,13 +27,18 @@ return {
 
       -- Make sure mason's bin directory (where the mason-managed `tree-sitter`
       -- CLI lives) is on PATH, even if mason.setup() has not run yet.
-      local sep = vim.fn.has("win32") == 1 and ";" or ":"
+      local path_sep = vim.fn.has("win32") == 1 and ";" or ":"
       local mason_bin = vim.fn.stdpath("data") .. "/mason/bin"
       if
         vim.fn.isdirectory(mason_bin) == 1
-        and not string.find(sep .. (vim.env.PATH or "") .. sep, sep .. mason_bin .. sep, 1, true)
+        and not string.find(
+          path_sep .. (vim.env.PATH or "") .. path_sep,
+          path_sep .. mason_bin .. path_sep,
+          1,
+          true
+        )
       then
-        vim.env.PATH = mason_bin .. sep .. (vim.env.PATH or "")
+        vim.env.PATH = mason_bin .. path_sep .. (vim.env.PATH or "")
       end
 
       local function install_parsers()
@@ -68,6 +73,7 @@ return {
           "nvim-treesitter (main): installing the `tree-sitter` CLI via mason to compile parsers…",
           vim.log.levels.INFO
         )
+        -- First argument is the version to install (nil = latest).
         pkg:install(nil, function(success)
           vim.schedule(function()
             if success then
@@ -107,7 +113,10 @@ return {
       }
 
       vim.api.nvim_create_autocmd("FileType", {
-        group = vim.api.nvim_create_augroup("daneel_treesitter", { clear = true }),
+        group = vim.api.nvim_create_augroup(
+          "daneel_treesitter",
+          { clear = true }
+        ),
         callback = function(args)
           local bufnr = args.buf
           if skip_filetypes[vim.bo[bufnr].filetype] then
@@ -126,7 +135,8 @@ return {
           end
 
           pcall(vim.treesitter.start, bufnr)
-          vim.bo[bufnr].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+          vim.bo[bufnr].indentexpr =
+            "v:lua.require'nvim-treesitter'.indentexpr()"
         end,
       })
     end,
