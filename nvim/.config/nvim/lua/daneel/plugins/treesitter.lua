@@ -109,23 +109,24 @@ return {
       vim.api.nvim_create_autocmd("FileType", {
         group = vim.api.nvim_create_augroup("daneel_treesitter", { clear = true }),
         callback = function(args)
-          local ft = vim.bo[args.buf].filetype
-          if skip_filetypes[ft] then
+          local bufnr = args.buf
+          if skip_filetypes[vim.bo[bufnr].filetype] then
             return
           end
 
-          local lang = vim.treesitter.language.get_lang(ft)
-          if not lang then
+          -- Follow tj devries' `main`-branch config: let Neovim resolve the
+          -- parser for the buffer and start treesitter highlighting. Both
+          -- calls are wrapped in `pcall` so buffers without an installed
+          -- parser simply fall back to Vim's default syntax highlighting
+          -- instead of throwing (parsers install asynchronously, so the
+          -- first buffer of a language may open before its parser is ready).
+          local ok, parser = pcall(vim.treesitter.get_parser, bufnr)
+          if not ok or not parser then
             return
           end
 
-          local ok, added = pcall(vim.treesitter.language.add, lang)
-          if not ok or not added then
-            return
-          end
-
-          pcall(vim.treesitter.start, args.buf, lang)
-          vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+          pcall(vim.treesitter.start, bufnr)
+          vim.bo[bufnr].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
         end,
       })
     end,
