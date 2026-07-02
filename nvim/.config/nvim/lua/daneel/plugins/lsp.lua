@@ -16,10 +16,6 @@ return {
         { "j-hui/fidget.nvim", opts = {} },
       },
       config = function()
-        -- `mason-lspconfig` (v2+) no longer exposes `setup_handlers`. On
-        -- Neovim 0.11+ servers are configured with the built-in
-        -- `vim.lsp.config` API and enabled automatically by
-        -- `mason-lspconfig` (`automatic_enable`, on by default).
         local lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
         require("mason").setup()
         require("mason-lspconfig").setup({
@@ -32,7 +28,6 @@ return {
           },
         })
 
-        -- Shared config merged into every server (see `:h lsp-config`).
         vim.lsp.config("*", {
           capabilities = lsp_capabilities,
         })

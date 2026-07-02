@@ -3,30 +3,19 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    -- The `master` branch is locked to Neovim 0.11 and crashes on 0.12+
-    -- (e.g. the `conceal_line` decoration provider error when rendering
-    -- markdown in the LSP hover float). The `main` branch is the supported
-    -- rewrite for Neovim 0.12+.
     branch = "main",
-    -- `main` does not support lazy-loading.
     lazy = false,
     build = ":TSUpdate",
-    -- mason provides the `tree-sitter` CLI that the `main` branch uses to
-    -- compile parsers, and prepends its `bin/` directory to Neovim's PATH.
     dependencies = { "mason-org/mason.nvim" },
     config = function()
       local ensure_installed = {
         "lua",
         "php",
         "rust",
-        -- Needed so LSP hover/documentation floats (filetype markdown) are
-        -- highlighted with parsers/queries compatible with the running Neovim.
         "markdown",
         "markdown_inline",
       }
 
-      -- Make sure mason's bin directory (where the mason-managed `tree-sitter`
-      -- CLI lives) is on PATH, even if mason.setup() has not run yet.
       local path_sep = vim.fn.has("win32") == 1 and ";" or ":"
       local mason_bin = vim.fn.stdpath("data") .. "/mason/bin"
       if
@@ -54,9 +43,6 @@ return {
         )
       end
 
-      -- Look up and, if needed, install the mason `tree-sitter-cli` package,
-      -- then compile the parsers. Assumes the mason registry has been refreshed
-      -- so that `get_package` can resolve the package.
       local function provision_from_registry(registry)
         local pkg_ok, pkg = pcall(registry.get_package, "tree-sitter-cli")
         if not pkg_ok or not pkg then
@@ -73,7 +59,6 @@ return {
           "nvim-treesitter (main): installing the `tree-sitter` CLI via mason to compile parsers…",
           vim.log.levels.INFO
         )
-        -- First argument is the version to install (nil = latest).
         pkg:install(nil, function(success)
           vim.schedule(function()
             if success then
@@ -85,9 +70,6 @@ return {
         end)
       end
 
-      -- The `main` branch compiles parsers with the external `tree-sitter` CLI.
-      -- If it is missing, self-provision it via mason (which is already used
-      -- for LSP tooling); fall back to a helpful message otherwise.
       if vim.fn.executable("tree-sitter") == 1 then
         install_parsers()
       else
@@ -95,8 +77,6 @@ return {
         if not ok then
           manual_install_warning()
         else
-          -- On a fresh install the mason registry has not been downloaded yet,
-          -- so `get_package` would fail. Refresh it first, then provision.
           registry.refresh(function()
             vim.schedule(function()
               provision_from_registry(registry)
@@ -105,8 +85,6 @@ return {
         end
       end
 
-      -- Filetypes whose highlighting/indentation is handled elsewhere
-      -- (latex is handled by vimtex).
       local skip_filetypes = {
         tex = true,
         latex = true,
@@ -123,12 +101,6 @@ return {
             return
           end
 
-          -- Follow tj devries' `main`-branch config: let Neovim resolve the
-          -- parser for the buffer and start treesitter highlighting. Both
-          -- calls are wrapped in `pcall` so buffers without an installed
-          -- parser simply fall back to Vim's default syntax highlighting
-          -- instead of throwing (parsers install asynchronously, so the
-          -- first buffer of a language may open before its parser is ready).
           local ok, parser = pcall(vim.treesitter.get_parser, bufnr)
           if not ok or not parser then
             return
