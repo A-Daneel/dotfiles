@@ -11,6 +11,9 @@ return {
     -- `main` does not support lazy-loading.
     lazy = false,
     build = ":TSUpdate",
+    -- mason provides the `tree-sitter` CLI that the `main` branch uses to
+    -- compile parsers, and prepends its `bin/` directory to Neovim's PATH.
+    dependencies = { "williamboman/mason.nvim" },
     config = function()
       local ensure_installed = {
         "lua",
@@ -21,7 +24,64 @@ return {
         "markdown",
         "markdown_inline",
       }
-      require("nvim-treesitter").install(ensure_installed)
+
+      -- Make sure mason's bin directory (where the mason-managed `tree-sitter`
+      -- CLI lives) is on PATH, even if mason.setup() has not run yet.
+      local sep = vim.fn.has("win32") == 1 and ";" or ":"
+      local mason_bin = vim.fn.stdpath("data") .. "/mason/bin"
+      if
+        vim.fn.isdirectory(mason_bin) == 1
+        and not string.find(sep .. (vim.env.PATH or "") .. sep, sep .. mason_bin .. sep, 1, true)
+      then
+        vim.env.PATH = mason_bin .. sep .. (vim.env.PATH or "")
+      end
+
+      local function install_parsers()
+        require("nvim-treesitter").install(ensure_installed)
+      end
+
+      -- The `main` branch compiles parsers with the external `tree-sitter` CLI.
+      -- If it is missing, self-provision it via mason (which is already used
+      -- for LSP tooling); fall back to a helpful message otherwise.
+      if vim.fn.executable("tree-sitter") == 1 then
+        install_parsers()
+      else
+        local ok, registry = pcall(require, "mason-registry")
+        local pkg
+        if ok then
+          local pkg_ok, result = pcall(registry.get_package, "tree-sitter-cli")
+          pkg = pkg_ok and result or nil
+        end
+
+        if pkg and pkg:is_installed() then
+          install_parsers()
+        elseif pkg then
+          vim.notify(
+            "nvim-treesitter (main): installing the `tree-sitter` CLI via mason to compile parsers…",
+            vim.log.levels.INFO
+          )
+          pkg:install(nil, function(success)
+            if success then
+              vim.schedule(install_parsers)
+            else
+              vim.schedule(function()
+                vim.notify(
+                  "Failed to install the `tree-sitter` CLI via mason. Install it manually "
+                    .. "(e.g. `cargo install tree-sitter-cli` or your package manager) and run `:TSUpdate`.",
+                  vim.log.levels.ERROR
+                )
+              end)
+            end
+          end)
+        else
+          vim.notify(
+            "nvim-treesitter (main) requires the `tree-sitter` CLI to compile parsers. "
+              .. "Install it (e.g. `:MasonInstall tree-sitter-cli`, `cargo install tree-sitter-cli`, "
+              .. "or your package manager) and run `:TSUpdate`.",
+            vim.log.levels.WARN
+          )
+        end
+      end
 
       -- Filetypes whose highlighting/indentation is handled elsewhere
       -- (latex is handled by vimtex).
