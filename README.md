@@ -17,7 +17,7 @@ The Neovim config tracks the `main` branch of
 requires **Neovim 0.12+** and compiles parsers using the external
 [`tree-sitter` CLI](https://github.com/tree-sitter/tree-sitter).
 
-The config self-provisions the CLI through [mason](https://github.com/williamboman/mason.nvim)
+The config self-provisions the CLI through [mason](https://github.com/mason-org/mason.nvim)
 on first launch. If that fails (or you prefer to manage it yourself), install it
 via your package manager and run `:TSUpdate`, for example:
 
